@@ -1,0 +1,31 @@
+cff-version: 1.2.0
+message: "Se este software ou os dados forem usados, cite o artigo abaixo."
+title: "Bancada de medicao de mTLS pos-quantico"
+authors:
+  - family-names: "Gama da Silva"
+    given-names: "Jaime de Melo"
+    orcid: "https://orcid.org/0009-0007-8925-4056"
+    affiliation: "Universidade de Brasilia"
+  - family-names: "Cafe"
+    given-names: "Daniel Chaves"
+    orcid: "https://orcid.org/0000-0003-1132-3430"
+    affiliation: "Universidade de Brasilia"
+  - family-names: "dos Santos"
+    given-names: "Romulo F."
+    orcid: "https://orcid.org/0009-0001-3588-7583"
+    affiliation: "Universidade de Brasilia"
+license: MIT
+preferred-citation:
+  type: conference-paper
+  title: "Migracao Pos-Quantica em Pipelines DevSecOps: o Custo do Handshake
+    mTLS e um Degrau na Janela de Congestionamento"
+  authors:
+    - family-names: "Gama da Silva"
+      given-names: "Jaime de Melo"
+    - family-names: "Cafe"
+      given-names: "Daniel Chaves"
+    - family-names: "dos Santos"
+      given-names: "Romulo F."
+  collection-title: "11th Workshop on Communication Networks and Power Systems
+    (WCNPS 2026)"
+  year: 2026
