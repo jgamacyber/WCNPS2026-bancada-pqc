@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # =============================================================================
-#  emitir.sh - Autoridade Certificadora Efemera (ACE) do IDEIA-PQ
+#  emitir.sh - Autoridade Certificadora Efemera (ACE)
 #
 #  Emite um SVID X.509 de vida ultracurta com o compromisso de intencao numa
 #  extensao CRITICA.
