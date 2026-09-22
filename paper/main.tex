@@ -1,0 +1,579 @@
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%  WCNPS 2026 - 11th Workshop on Communication Networks and Power Systems
+%
+%  Migracao Pos-Quantica em Pipelines DevSecOps: o Custo do Handshake mTLS
+%  e um Degrau na Janela de Congestionamento
+%
+%  Compilar: pdfLaTeX -> BibTeX -> pdfLaTeX -> pdfLaTeX
+%  Arquivos: main.tex, referencias.bib
+%
+%  ANTES DE SUBMETER:
+%   1) preencher FIXME:URL-DO-REPOSITORIO na secao Disponibilidade
+%   2) o CFP exige INGLES; esta versao esta em portugues para revisao interna
+%
+%  Dados de origem: campanha lan (30 execucoes/config), campanha wan
+%  (15 execucoes/config) e varredura de initcwnd (7 pontos x 3 repeticoes).
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\documentclass[conference]{IEEEtran}
+\IEEEoverridecommandlockouts
+\renewcommand\IEEEkeywordsname{Palavras-chave}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[american,brazil]{babel}
+\usepackage[center]{caption}
+\usepackage{graphicx}
+\usepackage{amsmath,amssymb}
+\usepackage{booktabs}
+\usepackage{scalerel}
+\usepackage{tikz}
+\usetikzlibrary{svg.path}
+
+% ------------------------------------------------------------------ ORCID
+\definecolor{orcidlogocol}{HTML}{A6CE39}
+\tikzset{
+  orcidlogo/.pic={
+    \fill[orcidlogocol] svg{M256,128c0,70.7-57.3,128-128,128C57.3,256,0,198.7,0,128C0,57.3,57.3,0,128,0C198.7,0,256,57.3,256,128z};
+    \fill[white] svg{M86.3,186.2H70.9V79.1h15.4v48.4V186.2z}
+                 svg{M108.9,79.1h41.6c39.6,0,57,28.3,57,53.6c0,27.5-21.5,53.6-56.8,53.6h-41.8V79.1z M124.3,172.4h24.5c34.9,0,42.9-26.5,42.9-39.7c0-21.5-13.7-39.7-43.7-39.7h-23.7V172.4z}
+                 svg{M88.7,56.8c0,5.5-4.5,10.1-10.1,10.1c-5.6,0-10.1-4.6-10.1-10.1c0-5.6,4.5-10.1,10.1-10.1C84.2,46.7,88.7,51.3,88.7,56.8z};
+  }
+}
+\newcommand\orcid[1]{\href{https://orcid.org/#1}{\mbox{\scalerel*{
+\begin{tikzpicture}[yscale=-1,transform shape]
+\pic{orcidlogo};
+\end{tikzpicture}
+}{|}}}}
+
+\usepackage[bookmarks=false]{hyperref}
+
+% ------------------------------------------------- cabecalho do workshop
+\makeatletter
+\let\old@ps@headings\ps@headings
+\let\old@ps@IEEEtitlepagestyle\ps@IEEEtitlepagestyle
+\def\confheader#1{%
+\def\ps@headings{\old@ps@headings%
+\def\@oddhead{\strut\hfill#1\hfill\strut}%
+\def\@evenhead{\strut\hfill#1\hfill\strut}}%
+\def\ps@IEEEtitlepagestyle{\old@ps@IEEEtitlepagestyle%
+\def\@oddhead{\strut\hfill#1\hfill\strut}%
+\def\@evenhead{\strut\hfill#1\hfill\strut}}%
+\ps@headings}
+\makeatother
+\confheader{11th Workshop on Communication Networks and Power Systems (WCNPS 2026)}
+
+\begin{document}
+
+\title{Migração Pós-Quântica em Pipelines DevSecOps: o Custo do
+\textit{Handshake} mTLS é um Degrau na Janela de Congestionamento}
+
+\author{\IEEEauthorblockN{Jaime de Melo Gama da Silva \orcid{0009-0007-8925-4056}\IEEEauthorrefmark{1}\IEEEauthorrefmark{2},
+Daniel Chaves Café \orcid{0000-0003-1132-3430}\IEEEauthorrefmark{2},
+Rômulo F. dos Santos \orcid{0009-0001-3588-7583}\IEEEauthorrefmark{1}}
+\IEEEauthorblockA{Universidade de Brasília, Faculdade de Tecnologia -- Departamento de Engenharia Elétrica\IEEEauthorrefmark{2}\\
+Email: jaimemelo671@gmail.com, dcafe@unb.br, romulodba@gmail.com\IEEEauthorrefmark{1}}
+}
+
+\IEEEpubid{\makebox[\columnwidth]{979-8-3315-7075-0/25/\$31.00 $\copyright$2025 IEEE} \hspace{\columnsep}\makebox[\columnwidth]{ }}
+
+\maketitle
+
+% =============================================================== RESUMO
+\begin{abstract}
+Pipelines DevSecOps substituíram segredos estáticos por identidades de carga de
+trabalho de vida curta, o que faz cada tarefa pagar um \textit{handshake} mTLS
+completo, a frio e com cadeia de certificados dos dois lados. A literatura de
+desempenho de criptografia pós-quântica em TLS foi construída sobre o perfil da
+Web, com autenticação unilateral e sessões longas, e não cobre esse regime. Este
+artigo caracteriza o custo da migração num fatorial $2\times2$ de troca de chaves
+e autenticação, com 30 execuções independentes por configuração e
+\textit{bootstrap} hierárquico, sobre plataforma nativa deliberadamente modesta.
+O orçamento de bytes é aditivo, com resíduo de 6 bytes em 21\,339, e concorda com
+a contagem normativa de campos dentro de sete bytes, o que permite prever o
+volume de combinações não medidas. Sob 40~ms de ida e volta com 0,5\% de perda,
+porém, a latência deixa de acompanhar o tamanho e vira um degrau: a configuração
+cujos voos excedem a janela inicial de congestionamento leva 84\% mais tempo que
+a linha de base clássica, contra 8\% da imediatamente abaixo do limiar. Uma
+varredura da janela revela uma escada de dois degraus iguais, consequência de a
+autenticação mútua aplicar o critério a cada sentido, e permite estimar o tamanho
+de segmento efetivo a partir da própria latência. Como a plataforma infla o termo
+criptográfico, o efeito é um limite inferior para hardware de maior porte.
+\end{abstract}
+
+\begin{IEEEkeywords}
+DevSecOps, criptografia pós-quântica, TLS, controle de congestionamento,
+ML-KEM, ML-DSA
+\end{IEEEkeywords}
+
+% =============================================================== INTRODUCAO
+\section{Introdução}
+
+A automação de construção, teste e implantação de software acumulou um volume de
+privilégio que raramente aparece nos modelos de ameaça das organizações. Um
+\emph{runner} de CI/CD publica artefatos, altera \textit{clusters} de produção e
+assume papéis amplos em nuvem, historicamente apoiado em segredos estáticos que
+vazam com frequência em repositórios públicos~\cite{meli2019git} e cuja
+exploração consolidou a cadeia de suprimentos como vetor recorrente de
+ataque~\cite{ohm2020backstabber}. A resposta consolidada foi substituir esses
+segredos por identidades de carga de trabalho emitidas em tempo de execução
+mediante atestação, no espírito do SPIFFE e da arquitetura \emph{Zero
+Trust}~\cite{rose2020zta,avirneni2025workload}.
+
+Essa mudança tem uma consequência de rede que costuma passar despercebida. Como a
+credencial vale segundos e é emitida por tarefa, e como a comunicação entre
+componentes do pipeline é mutuamente autenticada, cada conexão paga um
+\textit{handshake} completo, a frio, sem reuso de sessão e com cadeia de
+certificados apresentada pelos \emph{dois} lados. Numa construção que abre
+centenas de conexões curtas, o custo do estabelecimento deixa de ser amortizável
+e passa a ser proporcional ao número de tarefas; em malhas de serviço com
+\textit{sidecars}~\cite{ashok2021servicemesh} ele é pago a cada salto.
+
+Sobre esse cenário incide a padronização do ML-KEM~\cite{nist2024fips203}, do
+ML-DSA~\cite{nist2024fips204} e do SLH-DSA~\cite{nist2024fips205}, que
+transformou a migração pós-quântica em projeto de
+engenharia~\cite{shor1997polynomial,mosca2018cybersecurity}. A literatura de
+desempenho de PQC em TLS é
+sólida~\cite{sikeridis2020postquantum,paquin2020benchmarking,schwabe2020kemtls},
+porém construída sobre o perfil da Web: autenticação unilateral, sessões longas e
+certificados com meses de validade. O perfil de um pipeline é quase o oposto, e a
+diferença não é só de escala. Com autenticação mútua e cadeia de dois níveis, o
+volume do estabelecimento aproximadamente dobra, o que aproxima o
+\textit{handshake} de limiares do transporte que no perfil Web ficam distantes.
+
+Daí a pergunta que orienta o trabalho: \emph{nesse regime, quanto custa a
+migração pós-quântica, e onde o custo aparece?} As contribuições são três.
+Mostra-se que troca de chaves e autenticação compõem seus custos de bytes por
+soma, com resíduo abaixo de 0,03\%, e que o valor absoluto é recuperável dos
+tamanhos normativos dos esquemas, o que fornece um modelo preditivo. Demonstra-se
+que em enlace com atraso e perda o custo de latência não é proporcional ao
+tamanho, mas um degrau determinado pela janela inicial de congestionamento,
+verificado por varredura controlada desse parâmetro e não inferido por
+correlação. E dos dois anteriores deriva-se uma regra de projeto de cadeia
+aplicável antes de qualquer medição.
+
+% =========================================================== REFERENCIAL
+\section{Trabalhos Relacionados}
+\label{sec:referencial}
+
+Três resultados delimitam o problema. Paquin \textit{et
+al.}~\cite{paquin2020benchmarking} mostram que, sob perda de pacotes, o tamanho
+das mensagens domina o custo computacional dos esquemas pós-quânticos, e é dessa
+observação que parte a suspeita de que enlaces ideais produzem conclusões
+otimistas. Sikeridis \textit{et al.}~\cite{sikeridis2020postquantum} demonstram
+que a autenticação, e não a troca de chaves, é o componente que mais penaliza o
+\textit{handshake} em TLS~1.3, mas o fazem com autenticação unilateral em cenário
+Web. O KEMTLS~\cite{schwabe2020kemtls} evidencia que substituir assinaturas por
+encapsulamento de chaves reduz banda e ciclos. Trabalhos sobre certificados X.509
+pós-quânticos~\cite{kampanakis2018viability} e sobre transição de infraestrutura
+de chave pública~\cite{bindel2017transitioning} já antecipavam o crescimento das
+cadeias como obstáculo dominante e a não linearidade do efeito, mas nenhum
+identifica o mecanismo de transporte responsável nem o parâmetro que o controla.
+
+Há ainda uma tradição de aferição de PQC em plataformas restritas cujo protocolo
+metodológico este trabalho adota. O pqm4~\cite{kannwischer2019pqm4} afere os
+candidatos do NIST num microcontrolador Cortex-M4 de 196~KiB, e
+Bürstinghaus-Steinbach \textit{et al.}~\cite{burstinghaus2020embedded} integram
+Kyber e SPHINCS+ ao mbed~TLS sobre quatro plataformas embarcadas. Em ambos, a
+plataforma modesta não é limitação declarada com humildade, e sim instrumento que
+estabelece viabilidade por cima.
+
+Do lado da automação, revisões de DevSecOps apontam a automação como o desafio
+mais relatado~\cite{rajapakse2022challenges}, e a literatura de identidade de
+carga de trabalho~\cite{avirneni2025workload} trata PQC de passagem. Na revisão
+realizada não se encontrou caracterização do custo de PQC em autenticação mútua
+com cadeias de dois níveis, regime praticado por pipelines e malhas de serviço.
+
+% ============================================================ BANCADA
+\section{Bancada e Desenho Experimental}
+\label{sec:bancada}
+
+\subsection{Escolha da plataforma}
+\label{sec:plataforma}
+
+A campanha foi executada sobre um Intel Core i3-4005U de dois núcleos a 1,70~GHz,
+microarquitetura de 2013, sem Turbo Boost e com 8~GB de DDR3. A escolha é
+metodológica e apoia-se em três argumentos.
+
+O primeiro é o de limite superior, como em pqm4~\cite{kannwischer2019pqm4} e em
+Bürstinghaus-Steinbach \textit{et al.}~\cite{burstinghaus2020embedded}: um custo
+aceitável na plataforma mais lenta é aceitável em qualquer plataforma mais
+rápida, e a recíproca não vale. A CPU empregada situa-se entre os extremos
+usualmente reportados, cerca de duas ordens de grandeza acima de um
+microcontrolador e uma ordem abaixo de um nó de servidor contemporâneo.
+
+O segundo é específico deste trabalho e mais forte. O resultado central é que, em
+enlace com atraso e perda, o custo passa a ser dominado por um termo de rede e
+não pelo criptográfico. Uma CPU lenta \emph{infla} o termo criptográfico e,
+portanto, \emph{dificulta} observar o efeito. Aqui a criptografia responde por
+4,5 a 7,7~ms do \textit{handshake} contra dois tempos de ida e volta de cerca de
+40~ms cada, razão em torno de dez para um; num servidor com implementações
+vetorizadas o termo criptográfico cairia para fração de milissegundo e a razão
+passaria de cem para um. A plataforma é o caso conservador para a tese, e as
+magnitudes reportadas são limite inferior do efeito.
+
+O terceiro é de controle experimental. A ausência de Turbo Boost elimina a
+variação de frequência que, em processadores de servidor, se confunde com a
+variabilidade do algoritmo sob medição; o chassi de baixa potência permite
+verificar por contador que não houve \textit{throttling}; e a máquina dedicada
+permite isolar um núcleo sem disputa com outros inquilinos, o que em nó
+compartilhado raramente é possível. Como virtualização e contêineres degradam
+sobretudo a cauda da distribuição~\cite{felter2015updated}, a plataforma nativa
+compra precisão onde ela é mais escassa.
+
+\subsection{Protocolo de medição}
+\label{sec:protocolo}
+
+Quatro elementos do protocolo daqueles trabalhos foram adotados, e o quinto é
+exigido pelo objeto.
+
+\textbf{Frequência fixa e relato em ciclos.} O pqm4 opera a placa em frequência
+fixa e reporta ciclos, não tempo de parede, porque ciclos comparam-se entre
+plataformas de relógios distintos. Aqui a frequência é constante por projeto, de
+modo que ciclos e tempo relacionam-se por 1\,700 ciclos por microssegundo e os
+tempos podem ser confrontados com aferições de outras plataformas. Como
+calibração, a assinatura isolada com ML-DSA-44 custa 1,95~Mciclos nessa CPU,
+contra 0,11~Mciclos do ECDSA P-256.
+
+\textbf{Integração em biblioteca real.} Como em Bürstinghaus-Steinbach \textit{et
+al.}, a medição principal é do \textit{handshake} completo sobre a pilha TLS de
+produção, e não da soma de primitivas isoladas. Isso captura custos de
+serialização e de transporte que a soma ignora, e é neles que reside o efeito
+relatado.
+
+\textbf{Linha de base clássica em toda comparação.} Todo resultado é razão em
+relação a C1, medida na mesma sessão e na mesma ordem randomizada, sem comparação
+contra número de literatura obtido em outra plataforma.
+
+\textbf{Arcabouço reproduzível.} A campanha é disparada por uma linha, com
+semente de randomização fixa registrada.
+
+\textbf{Voo por direção, além do total.} Como a hipótese envolve um limiar de
+transporte, o total trocado é insuficiente: é o voo de um único lado que precisa
+caber na primeira janela.
+
+\subsection{Configuração e instrumentação}
+\label{sec:config}
+
+O sistema é o Rocky Linux 10.2 em modo FIPS com OpenSSL 3.5.5, cujo provedor
+padrão traz ML-KEM e ML-DSA nativos. Aplicaram-se governador em
+\texttt{performance}, \textit{hyper-threading} e estados C profundos desligados,
+isolamento do núcleo de medição, ASLR desabilitado, \textit{swap} desligado e
+páginas transparentes desabilitadas, medidas que atacam as fontes de viés
+documentadas por Mytkowicz \textit{et al.}~\cite{mytkowicz2009wrong}. O relógio é
+o \texttt{CLOCK\_MONOTONIC\_RAW}.
+
+Cliente e servidor ocupam \textit{network namespaces} e núcleos distintos,
+ligados por par \texttt{veth} com MTU de 1500 bytes e \textit{offloads}
+desabilitados: com TSO, GSO e GRO ligados, a agregação de segmentos faria a
+contagem de bytes no \textit{socket} deixar de refletir o que a rede veria. O
+controle de congestionamento é o CUBIC~\cite{ha2008cubic}, padrão do Linux, e a
+opção de \textit{timestamps} está habilitada. Registre-se que o resultado da
+Seção~\ref{sec:degrau} não depende da disciplina escolhida: um \textit{handshake}
+de poucas dezenas de kilobytes termina ainda dentro da partida lenta, regime em
+que CUBIC, Reno e BBR partem da mesma janela inicial e a duplicam, divergindo
+apenas na prevenção de congestionamento, à qual esse tamanho não chega. Dois
+perfis de enlace foram avaliados: o \texttt{lan} usa o par \texttt{veth} sem
+emulação, e o \texttt{wan} aplica \texttt{netem} nos dois sentidos, com 20~ms de
+atraso e desvio de 2~ms por sentido e 0,5\% de perda, alvo de 40~ms de ida e
+volta, medido entre 38,0 e 42,4~ms conforme a sessão. O \textit{script} de rede
+afere esse valor por \textit{ping} após aplicar o perfil e recusa-se a prosseguir
+quando o enlace não corresponde ao pretendido, salvaguarda adotada depois de uma
+campanha inteira ter sido coletada com o perfil rotulado e não aplicado.
+
+\begin{table}[!t]
+\caption{Configurações avaliadas. As quatro primeiras formam o fatorial
+$2\times2$: as linhas variam o KEM sobre a mesma curva e as colunas variam a
+assinatura. Categoria de segurança NIST entre parênteses.}
+\label{tab:tratamentos}
+\centering
+\footnotesize
+\setlength{\tabcolsep}{4pt}
+\begin{tabular}{@{}llll@{}}
+\toprule
+\textbf{ID} & \textbf{Grupo TLS} & \textbf{Assinatura e CA} & \textbf{Papel} \\
+\midrule
+C1 & \texttt{secp256r1}         & ECDSA P-256 (clás.) & linha de base \\
+C3 & \texttt{secp256r1}         & ML-DSA-44 (2)       & fatorial \\
+H1 & \texttt{SecP256r1MLKEM768} & ECDSA P-256 (clás.) & fatorial \\
+H2 & \texttt{SecP256r1MLKEM768} & ML-DSA-44 (2)       & fatorial \\
+P3 & \texttt{MLKEM768}          & ML-DSA-65 (3)       & pós-quântica pura \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+A Tabela~\ref{tab:tratamentos} lista as configurações, com os nomes de grupo tal
+como passados a \texttt{SSL\_CTX\_set1\_groups\_list}. Todas usam TLS~1.3 com
+autenticação mútua e cadeia homogênea de dois níveis, com a autoridade assinando
+a folha com o mesmo esquema desta, de modo que em P3 nem a assinatura da
+autoridade nem o \texttt{CertificateVerify} recorrem a esquema clássico. O modo
+FIPS retira o X25519 dos grupos disponíveis e obriga a usar \texttt{secp256r1}, o
+que tornou o desenho mais limpo do que o planejado: C1 e H1 passam a diferir
+\emph{somente} pelo acréscimo do ML-KEM sobre a mesma curva, e o mesmo vale para
+C3 e H2.
+
+Os certificados de entidade final carregam, além dos campos usuais, uma extensão
+crítica de 134 bytes específica da implantação, idêntica em todas as
+configurações. Por ser constante ela não afeta nenhuma comparação, mas integra os
+voos reportados e convém registrá-la, porque o critério da
+Seção~\ref{sec:degrau} é sensível a essa ordem de grandeza: sem ela o voo do
+servidor em P3 mediria 15\,908 bytes e caberia em onze segmentos, e não em doze.
+Cadeias de produção costumam carregar extensões próprias de porte semelhante.
+
+Foram medidas duas variáveis: $T_{\mathrm{hs}}$, o \textit{handshake} mTLS a frio
+até o primeiro byte de aplicação, e $B_{\mathrm{hs}}$, os bytes nos contadores do
+BIO de \textit{socket}, isto é, a carga útil TCP nos dois sentidos, incluindo
+cabeçalhos de registro TLS e excluindo cabeçalhos TCP/IP e retransmissões. Cada
+conexão paga um \textit{handshake} completo, sem reuso de sessão nem
+\textit{tickets}. Cada configuração recebe 30 execuções independentes em
+\texttt{lan} e 15 em \texttt{wan}, com 300 \textit{handshakes} e 20 de aquecimento
+por execução, em ordem randomizada com semente fixa; o contador de
+\textit{throttling} é lido antes e depois de cada sessão, que é descartada se
+mudar. A incerteza vem de \textit{bootstrap} hierárquico no formato de Kalibera e
+Jones~\cite{kalibera2013rigorous}, reamostrando execuções no primeiro nível e
+operações no segundo, com 10\,000 reamostragens: tratar as 9\,000 operações de uma
+configuração como independentes produziria intervalos artificialmente estreitos,
+já que operações do mesmo lote compartilham estado de \textit{cache} e de
+alocador.
+
+% ============================================================ RESULTADOS
+\section{O Orçamento de Bytes é Aditivo}
+\label{sec:bytes}
+
+\begin{table}[!t]
+\caption{Latência e volume do \textit{handshake}, razões em relação a C1 entre
+parênteses. Todos os intervalos de 95\% ficam a menos de 1\% da mediana. A última
+coluna é o voo do servidor, isto é, os bytes que o cliente recebe.}
+\label{tab:resultados}
+\centering
+\footnotesize
+\setlength{\tabcolsep}{3.5pt}
+\begin{tabular}{@{}lrrrr@{}}
+\toprule
+\textbf{ID} &
+\textbf{$T_{\mathrm{hs}}$ \texttt{lan}} &
+\textbf{$T_{\mathrm{hs}}$ \texttt{wan}} &
+\textbf{$B_{\mathrm{hs}}$} &
+\textbf{voo serv.} \\
+ & ($\mu$s) & ($\mu$s) & (bytes) & (bytes) \\
+\midrule
+C1 & 4\,516 (1{,}00) & 85\,455 (1{,}00) & 2\,821 (1{,}00)  & 1\,536 \\
+C3 & 7\,101 (1{,}57) & 91\,742 (1{,}07) & 21\,890 (7{,}76) & 11\,070 \\
+H1 & 5\,149 (1{,}14) & 86\,262 (1{,}01) & 5\,085 (1{,}80)  & 2\,624 \\
+H2 & 7\,659 (1{,}70) & 92\,567 (1{,}08) & 24\,160 (8{,}56) & 12\,160 \\
+\midrule
+P3 & 7\,703 (1{,}71) & 157\,656 (1{,}84) & 31\,918 (11{,}31) & \textbf{16\,042} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+A Tabela~\ref{tab:resultados} consolida as medições. Um indicador de validade
+interna precede a leitura: em C3, H2 e P3 as 9\,000 medições de $B_{\mathrm{hs}}$
+de cada configuração produziram um \emph{único} valor distinto, e em C1 e H1
+apareceram seis valores num intervalo de cinco bytes, que é a assinatura da
+codificação DER do ECDSA, cujos inteiros $r$ e $s$ perdem zeros à esquerda ou
+ganham um octeto de preenchimento conforme o bit mais significativo. ML-DSA tem
+assinatura de comprimento fixo e não exibe a oscilação.
+
+Com as quatro células do fatorial, os efeitos principais são estimáveis sem
+depender da ordem de composição. Em bytes, acrescentar o ML-KEM sobre a mesma
+curva custa 2\,270 e trocar ECDSA por ML-DSA-44 custa 19\,075, o que atribui
+89,4\% do acréscimo de C1 a H2 à autenticação e 10,6\% à troca de chaves,
+confirmando o achado de Sikeridis \textit{et al.}~\cite{sikeridis2020postquantum}
+agora em autenticação mútua.
+
+O resultado mais útil é que os dois fatores se compõem por soma. Somando à linha
+de base os efeitos medidos isoladamente, prevê-se para H2 um total de 24\,154
+bytes contra 24\,160 observados, resíduo de 6 bytes em 21\,339 de acréscimo, da
+mesma ordem da oscilação DER acima. Não há interação mensurável na escala em que
+os fatores operam, e a aparente interação que surge ao expressar os efeitos como
+razões é artefato dessa parametrização.
+
+Os dois efeitos reproduzem, além disso, aritmética de tamanho de campo. Os
+2\,270 bytes da troca de chaves correspondem à soma da chave pública do
+ML-KEM-768, de 1\,184 bytes, com o texto cifrado, de 1\,088. Os 19\,075 da
+autenticação correspondem, dentro de sete bytes, à contagem dos quatro
+certificados e dos dois \texttt{CertificateVerify} de um \textit{handshake} mútuo
+com cadeia de dois níveis, em que cada chave pública passa de 65 para 1\,312
+bytes e cada assinatura de cerca de 71 para 2\,420. Disso resulta um modelo
+simples: para cadeia de profundidade $d$ e autenticação mútua, o voo de cada lado
+cresce aproximadamente $d\,(p + s) + s$, com $p$ e $s$ os tamanhos de chave
+pública e de assinatura. O acordo entre medida e contagem normativa é um segundo
+indicador de validade interna, permite calcular o volume de combinações não
+medidas e independe da plataforma, pois decorre de tamanhos normativos e da
+estrutura do protocolo.
+
+% ============================================================ DEGRAU
+\section{Em Enlace Realista, o Custo é um Degrau}
+\label{sec:degrau}
+
+No perfil \texttt{lan} o volume praticamente não custa. P3 troca 32\% mais bytes
+que H2 e leva o mesmo tempo, com diferença de 44~$\mu$s cujo intervalo contém o
+zero, porque o gargalo é a CPU e não o canal. É esse o resultado que um enlace
+ideal produz, e é por isso que ele induz otimismo.
+
+Sob \texttt{wan} o quadro se inverte. C1 leva 85,5~ms, que são dois tempos de ida
+e volta, um do estabelecimento TCP e outro do \textit{handshake} TLS~1.3, mais a
+criptografia. H2 leva 92,6~ms, apenas 8\% acima, embora troque 8,56 vezes mais
+bytes. Já P3 leva 157,7~ms, 84\% acima de C1. A decomposição incremental
+inverte-se: o passo de H2 para P3, que sob \texttt{lan} respondia por 1,4\% do
+acréscimo de tempo, responde por 90,1\% sob \texttt{wan}.
+
+O crescimento não é proporcional aos bytes, é um degrau, e a última coluna da
+Tabela~\ref{tab:resultados} indica onde ele está. A janela inicial de
+congestionamento do Linux é de dez segmentos~\cite{rfc6928}; com MTU de 1500 e a
+opção de \textit{timestamps} habilitada, que consome mais 12 bytes por segmento,
+o tamanho máximo de segmento efetivo é 1\,448 bytes e a primeira janela comporta
+14\,480. O voo do servidor mede 12\,160 bytes em H2 e 16\,042 em P3: H2 cabe, e
+P3 excede o limiar por 1\,562 bytes, menos de 11\%. O critério, enunciado de
+forma independente desta bancada, é que o custo extra aparece quando
+
+\begin{equation}
+d\,(p + s) + s \;>\; \mathit{initcwnd} \times \mathit{MSS}_{\mathrm{ef}} ,
+\label{eq:limiar}
+\end{equation}
+
+\noindent
+com o lado esquerdo dado pelo modelo da Seção~\ref{sec:bytes} e o direito pelos
+parâmetros do enlace, sendo $\mathit{MSS}_{\mathrm{ef}}$ a MTU descontados os
+cabeçalhos IP e TCP e as opções em uso. O que generaliza é o critério; o valor de
+14\,480 bytes é específico da configuração medida.
+
+Em autenticação mútua o critério aplica-se \emph{duas vezes}, porque cada lado
+envia seu próprio voo. Em P3 o cliente envia 15\,877 bytes, que também excedem a
+primeira janela, de modo que a configuração pode pagar até duas idas e voltas
+adicionais. É consequência que a literatura de autenticação unilateral não teria
+como observar, pois nela existe um único voo grande.
+
+\begin{table}[!t]
+\caption{Varredura da janela inicial sobre P3, perfil \texttt{wan}, três
+repetições de 120 \textit{handshakes} por ponto. A previsão registrada antes da
+coleta era de um degrau único entre dez e onze segmentos. Observaram-se dois
+degraus, e o platô começa em doze.}
+\label{tab:varredura}
+\centering
+\footnotesize
+\begin{tabular}{@{}rrrr@{}}
+\toprule
+\textbf{\texttt{initcwnd}} & \textbf{janela} & \textbf{$T_{\mathrm{hs}}$ mediana}
+ & \textbf{queda} \\
+ & (bytes) & ($\mu$s) & ($\mu$s) \\
+\midrule
+10 & 14\,480 & 157\,363 & --- \\
+11 & 15\,928 & 124\,858 & $-32\,506$ \\
+12 & 17\,376 & \textbf{92\,490} & $-32\,368$ \\
+13 & 18\,824 & 92\,686 & $+196$ \\
+14 & 20\,272 & 92\,431 & $-255$ \\
+20 & 28\,960 & 93\,692 & $+1\,261$ \\
+40 & 57\,920 & 92\,213 & $-1\,479$ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+A Tabela~\ref{tab:varredura} leva o teste adiante, e o resultado é mais
+informativo que a previsão. A resposta é de fato uma escada, e não um declive: de
+doze segmentos em diante a mediana varia 2,0~ms em quinze medições, cerca de 2\%,
+sem tendência. Mas há \emph{dois} degraus, de $32\,506$ e $32\,368$~$\mu$s,
+iguais entre si a menos de 0,4\%, cada um da ordem de um tempo de ida e volta, e
+o platô começa em doze e não em onze.
+
+As duas discrepâncias têm a mesma origem e são verificáveis. A previsão usou
+1\,460 bytes por segmento; com \textit{timestamps} habilitados, confirmados na
+máquina, o valor efetivo é 1\,448. Os próprios degraus permitem estimá-lo sem
+inspecionar a pilha: como o platô do voo do servidor, de 16\,042 bytes, só começa
+em doze segmentos, tem-se $\mathit{MSS}_{\mathrm{ef}} < 16\,042/11 = 1\,458{,}4$;
+e como o voo do cliente, de 15\,877 bytes, já cabe em onze, tem-se
+$\mathit{MSS}_{\mathrm{ef}} \geq 15\,877/11 = 1\,443{,}4$. A varredura confina o
+valor efetivo a uma faixa de quinze bytes que contém 1\,448 e exclui 1\,460. O
+segundo degrau, por sua vez, é a manifestação direta da dupla aplicação do
+critério: com dez segmentos ambos os voos excedem a janela e pagam-se duas idas e
+voltas; com onze o voo do cliente passa a caber e paga-se uma; com doze cabem os
+dois.
+
+A intervenção, portanto, não apenas confirma o mecanismo como o quantifica: a
+latência de P3 é função degrau do número de segmentos da primeira janela, com
+patamares em duas, uma e zero idas e voltas adicionais, e a transição ocorre onde
+a equação~\eqref{eq:limiar} a coloca quando avaliada com o tamanho de segmento
+efetivo. A consequência é direta: em enlace realista o custo pós-quântico do
+\textit{handshake} é quase nulo enquanto os voos couberem na primeira janela e
+salta idas e voltas inteiras quando não couberem, de modo que trocar ML-DSA-65
+por ML-DSA-44, reduzir a profundidade da cadeia ou elevar a janela inicial são
+intervenções de efeito comparável, e a escolha entre elas é de engenharia de
+implantação, não de criptografia.
+
+% ============================================================ DISCUSSAO
+\section{Discussão e Ameaças à Validade}
+\label{sec:discussao}
+
+O resultado é consistente com Paquin \textit{et
+al.}~\cite{paquin2020benchmarking}, que apontavam o tamanho como fator dominante
+sob condições adversas de rede, e acrescenta o mecanismo e o parâmetro que o
+controla. A leitura prática é que o tamanho da cadeia importa menos por consumir
+banda e mais por atravessar limiares do transporte, o que sugere que a
+hibridização apenas na troca de chaves permanece o ponto de menor custo entre os
+avaliados, já que seu acréscimo de 2\,270 bytes dificilmente cruza o limiar
+sozinho.
+
+Quanto à validade de conclusão e interna, as comparações vêm com intervalos por
+\textit{bootstrap} hierárquico sobre execuções independentes, a ordem foi
+randomizada e o contador de \textit{throttling} permaneceu em
+zero~\cite{mytkowicz2009wrong}; o orçamento de bytes concorda com a contagem
+normativa dentro de sete bytes, e a oscilação de comprimento aparece apenas nas
+configurações ECDSA, como a codificação DER prevê.
+
+A validade externa foi em parte delimitada na Seção~\ref{sec:plataforma}: as
+magnitudes de tempo vêm de uma única microarquitetura e funcionam como limite
+inferior do efeito, já que o termo criptográfico é ali inflado. Quanto ao degrau,
+sua posição move-se com a janela inicial, com a MTU e com as opções TCP em uso,
+de modo que ambientes que já elevam a janela, prática comum em provedores de
+nuvem, podem não observar o efeito nas mesmas configurações; não depende, porém,
+da disciplina de congestionamento, pelo argumento de partida lenta da
+Seção~\ref{sec:config}. Defende-se como transportável a
+equação~\eqref{eq:limiar} e o método de verificá-la, não o valor do limiar nem a
+magnitude de 84\%. Quanto ao construto, $T_{\mathrm{hs}}$ mede o
+\textit{handshake} a frio e não captura reuso de sessão, escolha deliberada
+porque o regime de identidade efêmera por tarefa não o permite; RSA-3072 e
+Falcon-512 não integram a campanha, e cadeias mistas, comuns em transição, não
+foram avaliadas.
+
+% ============================================================ CONCLUSAO
+\section{Conclusões e Trabalhos Futuros}
+\label{sec:conclusao}
+
+Este artigo caracterizou o custo da migração pós-quântica no regime praticado por
+pipelines DevSecOps, com autenticação mútua, conexões efêmeras e cadeias de dois
+níveis, sobre plataforma nativa deliberadamente modesta. O orçamento de bytes é
+aditivo, com resíduo abaixo de 0,03\%, e recuperável dos tamanhos normativos dos
+esquemas, o que permite prever o volume de combinações não medidas e independe da
+plataforma. E, em enlace com atraso e perda, a latência deixa de acompanhar o
+tamanho e passa a ser um degrau no limiar da equação~\eqref{eq:limiar}: exceder a
+janela inicial por menos de 11\% custou 84\% de latência. Em autenticação mútua o
+critério incide sobre cada sentido, de modo que a resposta é uma escada de dois
+degraus iguais, e a varredura estima o tamanho de segmento efetivo a partir da
+latência, confinando-o a uma faixa de quinze bytes.
+
+A implicação de projeto é que a escolha do esquema pós-quântico num pipeline não
+deve ser feita apenas por comparação de custo criptográfico: calcular os voos
+resultantes e confrontá-los com a janela inicial do ambiente alvo é um passo
+barato, feito em papel, que pode tornar a escolha irrelevante diante de um ajuste
+de transporte. E como o termo criptográfico encolhe com hardware mais capaz
+enquanto o de rede não, a relevância relativa do degrau tende a crescer em
+infraestrutura de maior porte.
+
+Três direções decorrem das limitações: mapear o limiar variando MTU, inclusive em
+enlaces com \textit{jumbo frames}, onde o critério prevê que o degrau desapareça;
+replicar a campanha em nó de servidor contemporâneo, verificando a previsão de
+que a razão entre os termos de rede e de criptografia cresce uma ordem de
+grandeza; e medir uma variante baseada em KEMTLS~\cite{schwabe2020kemtls}, que
+dispensa assinatura no \textit{handshake} e, pelo modelo apresentado, deveria
+manter os voos abaixo do limiar nas condições em que os esquemas baseados em
+assinatura o excedem.
+
+\section*{Disponibilidade}
+O código da bancada, os dados brutos por operação e os manifestos de configuração
+do OpenSSL estão disponíveis em \texttt{FIXME:URL-DO-REPOSITORIO}.
+
+% ============================================================ REFERENCIAS
+\bibliographystyle{IEEEtran}
+\bibliography{referencias}
+
+\end{document}
