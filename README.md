@@ -69,7 +69,6 @@ errou por um segmento, e o erro é o que produziu os dois achados acima.
 ## Estrutura
 
 ```
-paper/       main.tex e referencias.bib
 docs/        REPRODUCAO.md, o guia passo a passo
 bench/       instrumentos de medição em C
 scripts/     rede.sh (namespaces e perfis), varredura-initcwnd.sh
