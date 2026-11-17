@@ -129,8 +129,3 @@ depende de `initcwnd`, não da disciplina.
 Código sob MIT (`LICENSE`). O texto em `paper/` é dos autores e segue a política
 de direitos da IEEE após aceitação.
 
-## Autores
-
-Jaime de Melo Gama da Silva, Daniel Chaves Café e Rômulo F. dos Santos.
-Universidade de Brasília, Faculdade de Tecnologia, Departamento de Engenharia
-Elétrica.
