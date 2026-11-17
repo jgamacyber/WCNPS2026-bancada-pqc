@@ -1,8 +1,4 @@
-
-
 # Bancada de medição de mTLS pós-quântico
-
-Código, dados e artigo submetidos ao **WCNPS 2026**:
 
 > *Migração Pós-Quântica em Pipelines DevSecOps: o Custo do Handshake mTLS é um
 > Degrau na Janela de Congestionamento*
